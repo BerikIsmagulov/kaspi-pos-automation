@@ -76,6 +76,9 @@ npm start
 | ------------------ | ---------------------------------------- | -------------------------- | ------------ |
 | `TOKEN_SECRET_KEY` | 64-символьная hex-строка для AES-256-GCM | —                          | Да           |
 | `PORT`             | Порт сервера                             | `3000`                     | Нет          |
+| `DATA_DIR`         | Каталог постоянных device/session-файлов | корень проекта             | Нет          |
+| `WEBHOOK_URL`      | Единый webhook для событий платежа       | —                          | Нет          |
+| `WEBHOOK_SECRET`   | HMAC-секрет для `WEBHOOK_URL`            | —                          | Нет          |
 | `APP_VERSION`      | Версия приложения Kaspi Pay              | `4.110.1`                  | Нет          |
 | `APP_BUILD`        | Номер сборки                             | `1099`                     | Нет          |
 | `APP_PLATFORM`     | Платформа устройства                     | `iOS`                      | Нет          |
@@ -99,6 +102,20 @@ npm run regen:device    # Перегенерация идентификатор�
 ```
 
 Старые файлы сохраняются как `.bak`. После ротации существующие сессии становятся недействительными.
+
+## Docker
+
+```bash
+docker build -t kaspi-pos-automation .
+docker run --rm -p 8090:8090 \
+  -e TOKEN_SECRET_KEY="$(openssl rand -hex 32)" \
+  -e WEBHOOK_URL="https://example.com/webhook" \
+  -e WEBHOOK_SECRET="replace-me" \
+  -v kaspi-pos-data:/data \
+  kaspi-pos-automation
+```
+
+Контейнер слушает порт `8090`. Volume `/data` обязателен для сохранения device identity, keypair, polling и webhook retry после пересоздания контейнера.
 
 ## Демо-интерфейс (`public/`)
 
