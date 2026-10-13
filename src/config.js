@@ -6,12 +6,15 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..');
+const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : ROOT_DIR;
+
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
 export const PORT = process.env.PORT || 3000;
 
 // ─── ECDSA P-256 keypair (persisted to keypair.json) ───
 
-const KEYPAIR_FILE = path.join(ROOT_DIR, 'keypair.json');
+const KEYPAIR_FILE = path.join(DATA_DIR, 'keypair.json');
 
 let ecKeyPair;
 if (fs.existsSync(KEYPAIR_FILE)) {
@@ -42,7 +45,7 @@ const pkTagHash = crypto.createHash('md5').update(pkB64).digest('hex');
 
 // ─── Device identity (persisted to device.json) ───
 
-const DEVICE_FILE = path.join(ROOT_DIR, 'device.json');
+const DEVICE_FILE = path.join(DATA_DIR, 'device.json');
 
 let deviceId, installId, pinHash;
 if (fs.existsSync(DEVICE_FILE)) {
@@ -112,4 +115,4 @@ export const ENTRANCE_HEADERS_BASE = {
   'User-Agent': UA_BROWSER,
 };
 
-export { ROOT_DIR };
+export { DATA_DIR, ROOT_DIR };

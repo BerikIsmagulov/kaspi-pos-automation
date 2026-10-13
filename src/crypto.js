@@ -1,11 +1,9 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import {fileURLToPath} from 'url';
-import {ecKeyPair} from './config.js';
+import {DATA_DIR, ecKeyPair} from './config.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ECDH_FILE = path.join(__dirname, '..', 'ecdh-keypair.json');
+const ECDH_FILE = path.join(DATA_DIR, 'ecdh-keypair.json');
 
 // ─── ECDH ───
 
@@ -38,33 +36,35 @@ export const decryptSecret = (tokenB64) => {
   return Buffer.concat([decipher.update(encrypted), decipher.final()]);
 };
 
-let lastEcdhKeyPair = null;
+const ecdhKeyPairs = new Map();
 
-export const generateECDH = () => {
-  lastEcdhKeyPair = crypto.generateKeyPairSync('ec', {namedCurve: 'prime256v1'});
+export const generateECDH = (contextId = 'default') => {
+  const keyPair = crypto.generateKeyPairSync('ec', {namedCurve: 'prime256v1'});
+  ecdhKeyPairs.set(contextId, keyPair);
   // Persist ECDH private key so refresh (SignInLite) can reuse it
   const saved = {
-    privateKey: lastEcdhKeyPair.privateKey.export({type: 'pkcs8', format: 'der'}).toString('base64'),
-    publicKey: lastEcdhKeyPair.publicKey.export({type: 'spki', format: 'der'}).toString('base64'),
+    privateKey: keyPair.privateKey.export({type: 'pkcs8', format: 'der'}).toString('base64'),
+    publicKey: keyPair.publicKey.export({type: 'spki', format: 'der'}).toString('base64'),
   };
   fs.writeFileSync(ECDH_FILE, JSON.stringify(saved, null, 2));
-  const spki = lastEcdhKeyPair.publicKey.export({type: 'spki', format: 'der'});
+  const spki = keyPair.publicKey.export({type: 'spki', format: 'der'});
   return spki.toString('base64');
 };
 
-export const completeECDH = (serverX509B64) => {
-  if (!lastEcdhKeyPair) throw new Error('No ECDH keypair generated');
+export const completeECDH = (serverX509B64, contextId = 'default') => {
+  const keyPair = ecdhKeyPairs.get(contextId);
+  if (!keyPair) throw new Error('No ECDH keypair generated');
   const serverPubKey = crypto.createPublicKey({
     key: Buffer.from(serverX509B64, 'base64'),
     format: 'der',
     type: 'spki',
   });
   const secret = crypto.diffieHellman({
-    privateKey: lastEcdhKeyPair.privateKey,
+    privateKey: keyPair.privateKey,
     publicKey: serverPubKey,
   });
   console.log('ECDH shared secret derived, length:', secret.length);
-  lastEcdhKeyPair = null;
+  ecdhKeyPairs.delete(contextId);
   return secret;
 };
 

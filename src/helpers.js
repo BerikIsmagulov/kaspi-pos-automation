@@ -45,15 +45,25 @@ export const extractUserToken = (resp) => {
 
 // ─── Logged fetch wrapper ───
 
+const SENSITIVE_KEY = /(authorization|cookie|otp|phone|pin|secret|sign|token|x509)/i;
+
+const redact = (value) => {
+  if (Array.isArray(value)) return value.map(redact);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [key, SENSITIVE_KEY.test(key) ? '[REDACTED]' : redact(entry)]),
+  );
+};
+
 export const loggedFetch = async (url, options = {}) => {
   const method = (options.method || 'GET').toUpperCase();
   console.log(`\n>>> ${method} ${url}`);
-  if (options.headers) console.log('>>> Headers:', JSON.stringify(options.headers, null, 2));
+  if (options.headers) console.log('>>> Headers:', JSON.stringify(redact(options.headers), null, 2));
   if (options.body) {
     try {
-      console.log('>>> Body:', JSON.parse(options.body));
+      console.log('>>> Body:', redact(JSON.parse(options.body)));
     } catch {
-      console.log('>>> Body:', options.body);
+      console.log('>>> Body: [non-JSON body omitted]');
     }
   }
 
@@ -70,7 +80,7 @@ export const loggedFetch = async (url, options = {}) => {
     }
   }
   console.log(`<<< ${resp.status} ${resp.statusText}`);
-  console.log('<<< Response:', typeof body === 'object' ? JSON.stringify(body, null, 2) : body);
+  console.log('<<< Response:', typeof body === 'object' ? JSON.stringify(redact(body), null, 2) : body);
   return resp;
 };
 

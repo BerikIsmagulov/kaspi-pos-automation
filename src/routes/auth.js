@@ -184,7 +184,7 @@ router.post('/verify-otp', async (req, res) => {
 // ═══════════════════════════════════════════════════
 
 async function doFinish(session) {
-  const ecdhX509 = generateECDH();
+  const ecdhX509 = generateECDH(session.processId);
   console.log('Generated ECDH public key for guard.x509:', ecdhX509);
 
   const signedDataObj = {
@@ -237,7 +237,7 @@ async function doFinish(session) {
     let rawSecret = null;
     if (body.data.x509) {
       try {
-        rawSecret = completeECDH(body.data.x509);
+        rawSecret = completeECDH(body.data.x509, session.processId);
         vtokenSecret = encryptSecret(rawSecret);
         console.log('vtoken activated successfully');
       } catch (e) {
@@ -247,7 +247,6 @@ async function doFinish(session) {
 
     // Fetch org context
     const orgUrl = `${KASPI_MTOKEN_URL}/v08/organizations/org-context-otp`;
-    const piValue = session.profileId != null ? String(session.profileId) : '';
     const orgHeaders = {
       'Content-Type': 'application/json',
       Accept: '*/*',
